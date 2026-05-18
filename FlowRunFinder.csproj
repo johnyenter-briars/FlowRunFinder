@@ -8,14 +8,14 @@
     <AssemblyTitle>Flow Run Finder</AssemblyTitle>
     <AssemblyDescription>Find and navigate to Power Automate cloud flow runs directly from XrmToolBox.</AssemblyDescription>
     <AssemblyProduct>Flow Run Finder</AssemblyProduct>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
+    <AssemblyVersion>1.0.1.0</AssemblyVersion>
+    <FileVersion>1.0.1.0</FileVersion>
     <Platforms>AnyCPU</Platforms>
 
     <!-- NuGet / XrmToolBox Tool Library packaging -->
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <PackageId>FlowRunFinder</PackageId>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <Authors>Mark Mitrovic</Authors>
     <Company>Mark Mitrovic</Company>
     <PackageDescription>Find and open Power Automate cloud flow runs directly from XrmToolBox. Filter by date range, view trigger output columns (Case fields, etc.) and jump straight to the run in Power Automate with one click.</PackageDescription>
@@ -24,7 +24,7 @@
     <RepositoryUrl>https://github.com/markmitrovic/FlowRunFinder</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <PackageReleaseNotes>Initial release.</PackageReleaseNotes>
+    <PackageReleaseNotes>Add package icon and embedded README.</PackageReleaseNotes>
     <Copyright>Copyright 2026 Mark Mitrovic</Copyright>
   </PropertyGroup>
 
