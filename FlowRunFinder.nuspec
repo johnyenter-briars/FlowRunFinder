@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package>
+  <metadata>
+    <id>FlowRunFinder</id>
+    <version>1.0.0</version>
+    <title>Flow Run Finder</title>
+    <authors>Mark Mitrovic</authors>
+    <owners>Mark Mitrovic</owners>
+    <projectUrl>https://github.com/markmitrovic/FlowRunFinder</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <license type="expression">MIT</license>
+    <description>Find and open Power Automate cloud flow runs directly from XrmToolBox. Filter by date range, view trigger output columns (Case fields, etc.) and jump straight to the run in Power Automate with one click.</description>
+    <releaseNotes>Initial release.</releaseNotes>
+    <copyright>Copyright 2026 Mark Mitrovic</copyright>
+    <tags>XrmToolBox PowerAutomate FlowRuns Dynamics365 PowerPlatform</tags>
+    <!--
+      XrmToolBox dependency is required — it tells the Plugin Store which host version
+      your plugin was built against and flags compatibility warnings on breaking changes.
+    -->
+    <dependencies>
+      <dependency id="XrmToolBox" version="1.2025.10.74" />
+    </dependencies>
+  </metadata>
+  <files>
+    <!--
+      lib\net452\Plugins is the folder XrmToolBox's Plugin Store expects.
+      All MSAL dependencies are already merged into FlowRunFinder.dll via ILRepack,
+      so only the single DLL is needed here.
+    -->
+    <file src="bin\Release\net48\FlowRunFinder.dll" target="lib\net452\Plugins" />
+  </files>
+</package>
