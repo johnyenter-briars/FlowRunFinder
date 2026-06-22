@@ -50,6 +50,8 @@
     <PackageReference Include="Microsoft.CrmSdk.CoreAssemblies" Version="9.0.2.49" />
     <!-- MSAL: aligned with the V2 Core auth services. -->
     <PackageReference Include="Microsoft.Identity.Client" Version="4.72.1" />
+    <!-- Keep System.Text.Json aligned with the directly referenced V2 Core DLL. -->
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
     <!-- ILRepack: merges MSAL DLLs into FlowRunFinder.dll so the plugin ships as a single file -->
     <PackageReference Include="ILRepack.Lib.MSBuild.Task" Version="2.0.34.1" PrivateAssets="all" />
   </ItemGroup>
