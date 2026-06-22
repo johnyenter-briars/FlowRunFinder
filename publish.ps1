@@ -12,9 +12,11 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$ProjectDir  = $PSScriptRoot
+$RepoRoot    = $PSScriptRoot
+$ProjectDir  = Join-Path $RepoRoot "src\FlowRunFinder"
+$ProjectFile = Join-Path $ProjectDir "FlowRunFinder.csproj"
 $NuspecFile  = Join-Path $ProjectDir "FlowRunFinder.nuspec"
-$NugetExe    = Join-Path $ProjectDir "tools\nuget.exe"
+$NugetExe    = Join-Path $RepoRoot "tools\nuget.exe"
 
 # ---------------------------------------------------------------------------
 # 1. Ensure nuget.exe is available
@@ -29,19 +31,22 @@ if (-not (Test-Path $NugetExe)) {
 # 2. Build Release (ILRepack runs automatically as part of the build)
 # ---------------------------------------------------------------------------
 Write-Host "`n--- Building Release ---"
-dotnet build "$ProjectDir\FlowRunFinder.csproj" -c Release
+dotnet build $ProjectFile -c Release
 if ($LASTEXITCODE -ne 0) { throw "Build failed." }
 
 # ---------------------------------------------------------------------------
 # 3. Remove old packages and create a fresh one
 # ---------------------------------------------------------------------------
 Write-Host "`n--- Packing ---"
-Get-ChildItem $ProjectDir -Filter "FlowRunFinder.*.nupkg" | Remove-Item -Force
+Get-ChildItem $RepoRoot -Filter "FlowRunFinder.*.nupkg" | Remove-Item -Force
 
-& $NugetExe pack $NuspecFile -OutputDirectory $ProjectDir -NoDefaultExcludes
-if ($LASTEXITCODE -ne 0) { throw "nuget pack failed." }
+Push-Location $ProjectDir
+& $NugetExe pack $NuspecFile -OutputDirectory $RepoRoot -NoDefaultExcludes
+$packExitCode = $LASTEXITCODE
+Pop-Location
+if ($packExitCode -ne 0) { throw "nuget pack failed." }
 
-$Package = Get-ChildItem $ProjectDir -Filter "FlowRunFinder.*.nupkg" | Select-Object -First 1
+$Package = Get-ChildItem $RepoRoot -Filter "FlowRunFinder.*.nupkg" | Select-Object -First 1
 Write-Host "`nPackage created: $($Package.Name)  ($([math]::Round($Package.Length/1KB, 1)) KB)"
 
 # ---------------------------------------------------------------------------

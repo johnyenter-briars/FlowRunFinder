@@ -1,7 +1,9 @@
 # Flow Run Finder - Build and Install Script
 
 $ErrorActionPreference = "Stop"
-$ProjectDir = $PSScriptRoot
+$RepoRoot   = $PSScriptRoot
+$ProjectDir = Join-Path $RepoRoot "src\FlowRunFinder"
+$ProjectFile = Join-Path $ProjectDir "FlowRunFinder.csproj"
 $LibDir     = Join-Path $ProjectDir "lib"
 $PluginsDir = "$env:APPDATA\MscrmTools\XrmToolBox\Plugins"
 
@@ -79,7 +81,7 @@ foreach ($dll in $neededDlls) {
 # 3. Restore NuGet packages (only Microsoft.CrmSdk now)
 Write-Host ""
 Write-Host "Restoring NuGet packages..." -ForegroundColor Gray
-& dotnet restore "$ProjectDir\FlowRunFinder.csproj"
+& dotnet restore $ProjectFile
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERROR: NuGet restore failed." -ForegroundColor Red
     pause; exit 1
@@ -88,7 +90,7 @@ if ($LASTEXITCODE -ne 0) {
 # 4. Build
 Write-Host ""
 Write-Host "Building plugin..." -ForegroundColor Gray
-& dotnet build "$ProjectDir\FlowRunFinder.csproj" -c Release --no-restore
+& dotnet build $ProjectFile -c Release --no-restore
 if ($LASTEXITCODE -ne 0) {
     Write-Host "ERROR: Build failed. See errors above." -ForegroundColor Red
     pause; exit 1

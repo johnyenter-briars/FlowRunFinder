@@ -33,6 +33,6 @@
     <!-- Icon shown in NuGet gallery and XrmToolBox Plugin Store -->
     <file src="images\big_new.png" target="images\icon.png" />
     <!-- README shown on the NuGet gallery package page -->
-    <file src="README.md" target="" />
+    <file src="..\..\README.md" target="" />
   </files>
 </package>

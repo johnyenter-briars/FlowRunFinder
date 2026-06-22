@@ -4,3 +4,6 @@ obj/
 *.nupkg
 tools/
 .vs/
+
+.dotnet
+.templateengine
