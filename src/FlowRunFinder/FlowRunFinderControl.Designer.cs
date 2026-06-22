@@ -7,45 +7,57 @@ namespace FlowRunFinder
     {
         private System.ComponentModel.IContainer components = null;
 
-        // ── Controls ──────────────────────────────────────────────────────────
-        private ToolStrip          toolStrip;
-        private ToolStripButton    tsbReloadFlows;
-        private ToolStripSeparator tsSep1;
-        private ToolStripButton    tsbClose;
+        private TableLayoutPanel rootLayout;
+        private Panel connectionPanel;
+        private Label lblConnectionCaption;
+        private Label lblConnection;
+        private Button btnReloadFlows;
+        private Button btnSettings;
+        private Button btnClose;
 
-        private Panel              pnlTop;
-        private Label              lblEnvironmentHeader;
-        private Label              lblEnvironment;
-        private Label              lblEnvIdHdr;
-        private TextBox            txtEnvironmentId;
-        private Label              lblFlowSearchHdr;
-        private Label              lblFlowCount;
-        private ComboBox           cmbFlow;
+        private Panel commandPanel;
+        private Label lblFlowCaption;
+        private Button btnFlowPicker;
+        private Button btnRefreshRuns;
+        private Button btnTriggerColumns;
+        private Button btnAdvancedSearch;
 
-        private Panel              pnlMiddle;
-        private Label              lblFromHdr;
-        private DateTimePicker     dtpStartDate;
-        private DateTimePicker     dtpStartTime;
-        private Label              lblToHdr;
-        private DateTimePicker     dtpEndDate;
-        private DateTimePicker     dtpEndTime;
-        private Button             btnToday;
-        private Button             btnLastHour;
-        private Button             btnAddColumns;
-        private Button             btnFindRuns;
+        private Panel flowPickerPanel;
+        private TextBox txtFlowSearch;
+        private ListBox lstFlows;
 
-        private Panel              pnlResults;
-        private Label              lblResultCount;
-        private Button             btnSelectAll;
-        private Button             btnDeleteSelected;
-        private DataGridView       dgvResults;
+        private Panel triggerColumnsPanel;
+        private Label lblTriggerColumnsCaption;
+        private TextBox txtTriggerColumnSearch;
+        private CheckedListBox clbTriggerColumns;
 
-        private Panel              pnlStatus;
-        private Label              lblStatus;
+        private Panel deviceCodePanel;
+        private Label lblDeviceMessage;
+        private Label lblDeviceUrlCaption;
+        private Label lblDeviceUrl;
+        private Button btnCopyDeviceUrl;
+        private Label lblDeviceCodeCaption;
+        private Label lblDeviceCode;
+        private Button btnCopyDeviceCode;
+
+        private Label lblStatus;
+        private Panel resultsPanel;
+        private DataGridView dgvRuns;
+        private Panel busyPanel;
+        private ProgressBar progressBusy;
+        private Label lblBusy;
+        private Panel toastPanel;
+        private Label lblToast;
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing && components != null) components.Dispose();
+            if (disposing)
+            {
+                if (_dataverseClient != null) _dataverseClient.Dispose();
+                if (_toastTimer != null) _toastTimer.Dispose();
+                if (components != null) components.Dispose();
+            }
+
             base.Dispose(disposing);
         }
 
@@ -53,277 +65,380 @@ namespace FlowRunFinder
         {
             components = new System.ComponentModel.Container();
 
-            // ── ToolStrip ──────────────────────────────────────────────────
-            toolStrip      = new ToolStrip();
-            tsbReloadFlows = new ToolStripButton();
-            tsSep1         = new ToolStripSeparator();
-            tsbClose       = new ToolStripButton();
+            rootLayout = new TableLayoutPanel();
+            connectionPanel = new Panel();
+            lblConnectionCaption = MakeCaption("Connection");
+            lblConnection = MakeBodyLabel("No XrmToolBox connection selected.");
+            btnReloadFlows = MakeButton("Reload Flows", true);
+            btnSettings = MakeButton("Settings", false);
+            btnClose = MakeButton("Close", false);
 
-            tsbReloadFlows.Text         = "Reload Flows";
-            tsbReloadFlows.ToolTipText  = "Reload the list of cloud flows from this environment";
-            tsbReloadFlows.Image        = SystemIcons.Application.ToBitmap();
-            tsbReloadFlows.DisplayStyle = ToolStripItemDisplayStyle.Text;
-            tsbReloadFlows.Click       += tsbReloadFlows_Click;
+            commandPanel = new Panel();
+            lblFlowCaption = MakeCaption("Flow");
+            btnFlowPicker = MakeButton("Select a flow", false);
+            btnRefreshRuns = MakeButton("Refresh Runs", true);
+            btnTriggerColumns = MakeButton("Trigger Columns", false);
+            btnAdvancedSearch = MakeButton("Advanced Search", false);
 
-            tsbClose.Text         = "Close";
-            tsbClose.DisplayStyle = ToolStripItemDisplayStyle.Text;
-            tsbClose.Alignment    = ToolStripItemAlignment.Right;
-            tsbClose.Click       += tsbClose_Click;
+            flowPickerPanel = new Panel();
+            txtFlowSearch = new TextBox();
+            lstFlows = new ListBox();
 
-            toolStrip.Items.AddRange(new ToolStripItem[] { tsbReloadFlows, tsSep1, tsbClose });
-            toolStrip.Dock = DockStyle.Top;
+            triggerColumnsPanel = new Panel();
+            lblTriggerColumnsCaption = MakeBodyLabel("Trigger input columns");
+            txtTriggerColumnSearch = new TextBox();
+            clbTriggerColumns = new CheckedListBox();
 
-            // ── Top panel: Environment + Flow selection ────────────────────
-            pnlTop = new Panel { Dock = DockStyle.Top, Height = 136, Padding = new Padding(12, 10, 12, 6) };
+            deviceCodePanel = new Panel();
+            lblDeviceMessage = MakeBodyLabel("");
+            lblDeviceUrlCaption = MakeCaption("URL");
+            lblDeviceUrl = MakeBodyLabel("");
+            btnCopyDeviceUrl = MakeButton("Copy", false);
+            lblDeviceCodeCaption = MakeCaption("Code");
+            lblDeviceCode = MakeBodyLabel("");
+            btnCopyDeviceCode = MakeButton("Copy", false);
 
-            lblEnvironmentHeader = MakeLabel("ENVIRONMENT", 7, bold: true, secondary: true);
-            lblEnvironmentHeader.Location = new Point(12, 12);
-            lblEnvironmentHeader.AutoSize = true;
+            lblStatus = MakeMutedLabel("Not connected.");
+            resultsPanel = new Panel();
+            dgvRuns = new DataGridView();
+            busyPanel = new Panel();
+            progressBusy = new ProgressBar();
+            lblBusy = MakeBodyLabel("Working...");
+            toastPanel = new Panel();
+            lblToast = MakeBodyLabel("Copied to clipboard");
 
-            lblEnvironment = MakeLabel("Not connected", 13);
-            lblEnvironment.Location = new Point(12, 26);
-            lblEnvironment.AutoSize = true;
-            lblEnvironment.ForeColor = Color.FromArgb(0, 120, 212);
-
-            lblEnvIdHdr = MakeLabel("ENVIRONMENT ID  (paste from Power Automate URL if blank)", 7, bold: true, secondary: true);
-            lblEnvIdHdr.Location = new Point(12, 50);
-            lblEnvIdHdr.AutoSize = true;
-
-            txtEnvironmentId = new TextBox
-            {
-                Location  = new Point(12, 64),
-                Width     = 560,
-                Font      = new Font("Courier New", 8.5f),
-                ForeColor = Color.FromArgb(0, 120, 212)
-            };
-
-            lblFlowSearchHdr = MakeLabel("CLOUD FLOW", 7, bold: true, secondary: true);
-            lblFlowSearchHdr.Location = new Point(12, 92);
-            lblFlowSearchHdr.AutoSize = true;
-
-            lblFlowCount = MakeLabel("", 8, secondary: true);
-            lblFlowCount.Location = new Point(110, 92);
-            lblFlowCount.AutoSize = true;
-
-            // Single combo box — DropDown style lets the user type to filter.
-            // TextChanged filters Items in real time; SelectedIndexChanged enables Find Runs.
-            cmbFlow = new ComboBox
-            {
-                Location         = new Point(12, 108),
-                Width            = 560,
-                DropDownStyle    = ComboBoxStyle.DropDown,
-                Font             = new Font("Segoe UI", 9f),
-                DropDownWidth    = 560,
-                MaxDropDownItems = 12
-            };
-            cmbFlow.SelectedIndexChanged += cmbFlow_SelectedIndexChanged;
-            cmbFlow.TextChanged          += cmbFlow_TextChanged;
-
-            pnlTop.Controls.AddRange(new Control[]
-            {
-                lblEnvironmentHeader, lblEnvironment,
-                lblEnvIdHdr, txtEnvironmentId,
-                lblFlowSearchHdr, lblFlowCount, cmbFlow
-            });
-
-            // ── Middle panel: Date range + buttons ────────────────────────
-            pnlMiddle = new Panel { Dock = DockStyle.Top, Height = 86, Padding = new Padding(12, 6, 12, 6) };
-
-            var lblDateRange = MakeLabel("DATE & TIME RANGE (LOCAL)", 7, bold: true, secondary: true);
-            lblDateRange.Location = new Point(12, 6);
-            lblDateRange.AutoSize = true;
-
-            lblFromHdr = MakeLabel("From", 9);
-            lblFromHdr.Location = new Point(12, 24);
-            lblFromHdr.AutoSize = true;
-
-            dtpStartDate = new DateTimePicker
-            {
-                Format   = DateTimePickerFormat.Short,
-                Location = new Point(50, 20),
-                Width    = 100
-            };
-            dtpStartTime = new DateTimePicker
-            {
-                Format   = DateTimePickerFormat.Time,
-                ShowUpDown = true,
-                Location = new Point(158, 20),
-                Width    = 90
-            };
-
-            lblToHdr = MakeLabel("To", 9);
-            lblToHdr.Location = new Point(262, 24);
-            lblToHdr.AutoSize = true;
-
-            dtpEndDate = new DateTimePicker
-            {
-                Format   = DateTimePickerFormat.Short,
-                Location = new Point(280, 20),
-                Width    = 100
-            };
-            dtpEndTime = new DateTimePicker
-            {
-                Format     = DateTimePickerFormat.Time,
-                ShowUpDown = true,
-                Location   = new Point(388, 20),
-                Width      = 90
-            };
-
-            btnToday = MakeButton("Today", 490, 18);
-            btnToday.Width  = 72;
-            btnToday.Click += btnToday_Click;
-
-            btnLastHour = MakeButton("Last Hour", 568, 18);
-            btnLastHour.Width  = 82;
-            btnLastHour.Click += btnLastHour_Click;
-
-            btnAddColumns = MakeButton("Columns...", 656, 18);
-            btnAddColumns.Width   = 95;
-            btnAddColumns.Enabled = false;
-            btnAddColumns.Click  += btnAddColumns_Click;
-            new ToolTip().SetToolTip(btnAddColumns, "Choose trigger / input fields to show as extra columns");
-
-            btnFindRuns = MakeButton("Find Runs", 12, 50, primary: true);
-            btnFindRuns.Width   = 120;
-            btnFindRuns.Enabled = false;
-            btnFindRuns.Click  += btnFindRuns_Click;
-
-            pnlMiddle.Controls.AddRange(new Control[]
-            {
-                lblDateRange,
-                lblFromHdr, dtpStartDate, dtpStartTime,
-                lblToHdr,   dtpEndDate,   dtpEndTime,
-                btnToday, btnLastHour, btnAddColumns, btnFindRuns
-            });
-
-            // ── Results panel ─────────────────────────────────────────────
-            pnlResults = new Panel { Dock = DockStyle.Fill, Padding = new Padding(12, 4, 12, 4) };
-
-            lblResultCount = MakeLabel("", 9, secondary: true);
-            lblResultCount.Location = new Point(12, 6);
-            lblResultCount.AutoSize = true;
-
-            // Select All / None toggle
-            btnSelectAll = MakeButton("Select All", 0, 2);
-            btnSelectAll.Width   = 82;
-            btnSelectAll.Anchor  = AnchorStyles.Top | AnchorStyles.Right;
-            btnSelectAll.Enabled = false;
-            btnSelectAll.Click  += btnSelectAll_Click;
-
-            // Delete Selected — red, disabled until rows are checked
-            btnDeleteSelected = new Button
-            {
-                Text      = "Delete Selected",
-                Location  = new Point(0, 2),
-                Width     = 128,
-                Height    = 26,
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(164, 38, 44),
-                ForeColor = Color.White,
-                Font      = new Font("Segoe UI", 9f, FontStyle.Bold),
-                Anchor    = AnchorStyles.Top | AnchorStyles.Right,
-                Enabled   = false
-            };
-            btnDeleteSelected.FlatAppearance.BorderColor = Color.FromArgb(130, 25, 30);
-            btnDeleteSelected.Click += btnDeleteSelected_Click;
-            new ToolTip().SetToolTip(btnDeleteSelected, "Permanently delete the checked flow run records from Dataverse");
-
-            dgvResults = new DataGridView
-            {
-                Location              = new Point(12, 32),
-                Anchor                = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
-                AutoSizeColumnsMode   = DataGridViewAutoSizeColumnsMode.Fill,
-                SelectionMode         = DataGridViewSelectionMode.FullRowSelect,
-                ReadOnly              = true,
-                AllowUserToAddRows    = false,
-                AllowUserToDeleteRows = false,
-                RowHeadersVisible     = false,
-                BackgroundColor       = SystemColors.Window,
-                BorderStyle           = BorderStyle.Fixed3D,
-                Font                  = new Font("Segoe UI", 9f),
-                ColumnHeadersDefaultCellStyle = new DataGridViewCellStyle
-                {
-                    Font      = new Font("Segoe UI", 8.5f, FontStyle.Bold),
-                    BackColor = Color.FromArgb(243, 242, 241),
-                    ForeColor = Color.FromArgb(96, 94, 92)
-                },
-                EnableHeadersVisualStyles = false,
-                GridColor       = Color.FromArgb(237, 235, 233),
-                CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal,
-                RowTemplate     = { Height = 28 },
-                MultiSelect     = true
-            };
-
-            // colCheck: fixed-width checkbox column (manual toggle — grid stays ReadOnly)
-            dgvResults.Columns.Add(new DataGridViewCheckBoxColumn
-            {
-                Name          = "colCheck",
-                HeaderText    = "",
-                Width         = 32,
-                AutoSizeMode  = DataGridViewAutoSizeColumnMode.None,
-                Resizable     = DataGridViewTriState.False
-            });
-            // colFlow: shown only in all-flows mode
-            dgvResults.Columns.Add(new DataGridViewTextBoxColumn { Name = "colFlow",     HeaderText = "Flow",     FillWeight = 22, Visible = false });
-            dgvResults.Columns.Add(new DataGridViewTextBoxColumn { Name = "colStatus",   HeaderText = "Status",   FillWeight = 15 });
-            dgvResults.Columns.Add(new DataGridViewTextBoxColumn { Name = "colStarted",  HeaderText = "Started",  FillWeight = 25 });
-            dgvResults.Columns.Add(new DataGridViewTextBoxColumn { Name = "colDuration", HeaderText = "Duration", FillWeight = 12 });
-            dgvResults.Columns.Add(new DataGridViewLinkColumn    { Name = "colLink",     HeaderText = "Link",     FillWeight = 28,
-                                                                   TrackVisitedState = false, LinkColor = Color.FromArgb(0, 120, 212) });
-
-            dgvResults.CellClick         += dgvResults_CellClick;
-            dgvResults.CellContentClick  += dgvResults_CellContentClick;
-            dgvResults.CellMouseEnter    += dgvResults_CellMouseEnter;
-            dgvResults.CellMouseLeave    += dgvResults_CellMouseLeave;
-
-            pnlResults.Controls.AddRange(new Control[] { lblResultCount, btnSelectAll, btnDeleteSelected, dgvResults });
-
-            // ── Status bar ────────────────────────────────────────────────
-            pnlStatus = new Panel { Dock = DockStyle.Bottom, Height = 24, BackColor = Color.FromArgb(243, 242, 241) };
-            lblStatus = MakeLabel("Connect to an environment to begin.", 8, secondary: true);
-            lblStatus.Location = new Point(8, 5);
-            lblStatus.AutoSize = true;
-            pnlStatus.Controls.Add(lblStatus);
-
-            // ── Wire up ───────────────────────────────────────────────────
             SuspendLayout();
-            Controls.Add(pnlResults);
-            Controls.Add(pnlMiddle);
-            Controls.Add(pnlTop);
-            Controls.Add(toolStrip);
-            Controls.Add(pnlStatus);
-            AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            ResumeLayout(false);
-            PerformLayout();
 
-            // Fix results panel size and right-anchor button positions after layout
-            dgvResults.Size           = new Size(pnlResults.Width - 24, pnlResults.Height - 40);
-            btnDeleteSelected.Left    = pnlResults.Width - 12 - btnDeleteSelected.Width;
-            btnSelectAll.Left         = btnDeleteSelected.Left - 6 - btnSelectAll.Width;
+            rootLayout.Dock = DockStyle.Fill;
+            rootLayout.BackColor = Color.FromArgb(250, 250, 250);
+            rootLayout.Padding = new Padding(20);
+            rootLayout.RowCount = 5;
+            rootLayout.ColumnCount = 1;
+            rootLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 64));
+            rootLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            rootLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            rootLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 24));
+            rootLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+            BuildConnectionPanel();
+            BuildCommandPanel();
+            BuildFlowPickerPanel();
+            BuildTriggerColumnsPanel();
+            BuildDeviceCodePanel();
+            BuildResultsPanel();
+            BuildBusyAndToastPanels();
+
+            rootLayout.Controls.Add(connectionPanel, 0, 0);
+            rootLayout.Controls.Add(commandPanel, 0, 1);
+            rootLayout.Controls.Add(deviceCodePanel, 0, 2);
+            rootLayout.Controls.Add(lblStatus, 0, 3);
+            rootLayout.Controls.Add(resultsPanel, 0, 4);
+
+            Controls.Add(rootLayout);
+            Controls.Add(flowPickerPanel);
+            Controls.Add(triggerColumnsPanel);
+            Controls.Add(busyPanel);
+            Controls.Add(toastPanel);
+            flowPickerPanel.BringToFront();
+            triggerColumnsPanel.BringToFront();
+            busyPanel.BringToFront();
+            toastPanel.BringToFront();
+
+            btnReloadFlows.Click += btnReloadFlows_Click;
+            btnSettings.Click += btnSettings_Click;
+            btnClose.Click += btnClose_Click;
+            btnFlowPicker.Click += btnFlowPicker_Click;
+            btnRefreshRuns.Click += btnRefreshRuns_Click;
+            btnTriggerColumns.Click += btnTriggerColumns_Click;
+            btnAdvancedSearch.Click += btnAdvancedSearch_Click;
+            txtFlowSearch.TextChanged += txtFlowSearch_TextChanged;
+            lstFlows.SelectedIndexChanged += lstFlows_SelectedIndexChanged;
+            txtTriggerColumnSearch.TextChanged += txtTriggerColumnSearch_TextChanged;
+            clbTriggerColumns.ItemCheck += clbTriggerColumns_ItemCheck;
+            btnCopyDeviceUrl.Click += btnCopyDeviceUrl_Click;
+            btnCopyDeviceCode.Click += btnCopyDeviceCode_Click;
+            dgvRuns.CellContentClick += dgvRuns_CellContentClick;
+
+            AutoScaleMode = AutoScaleMode.Font;
+            ResumeLayout(false);
         }
 
-        // ── Layout helpers ────────────────────────────────────────────────────
-        private static Label MakeLabel(string text, float size, bool bold = false, bool secondary = false)
-            => new Label
+        private void BuildConnectionPanel()
+        {
+            connectionPanel.Dock = DockStyle.Fill;
+            connectionPanel.Padding = new Padding(14);
+            connectionPanel.BackColor = Color.White;
+            connectionPanel.BorderStyle = BorderStyle.FixedSingle;
+
+            lblConnectionCaption.Location = new Point(14, 21);
+            lblConnectionCaption.Size = new Size(80, 20);
+            lblConnection.Location = new Point(100, 20);
+            lblConnection.Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right;
+            lblConnection.Size = new Size(520, 22);
+
+            btnReloadFlows.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnReloadFlows.Location = new Point(650, 15);
+            btnReloadFlows.Size = new Size(110, 32);
+            btnSettings.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnSettings.Location = new Point(768, 15);
+            btnSettings.Size = new Size(88, 32);
+            btnClose.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnClose.Location = new Point(864, 15);
+            btnClose.Size = new Size(74, 32);
+
+            connectionPanel.Resize += delegate
             {
-                Text      = text,
-                Font      = new Font("Segoe UI", size, bold ? FontStyle.Bold : FontStyle.Regular),
-                ForeColor = secondary ? Color.FromArgb(96, 94, 92) : SystemColors.ControlText,
-                AutoSize  = true
+                btnClose.Left = connectionPanel.Width - 14 - btnClose.Width;
+                btnSettings.Left = btnClose.Left - 8 - btnSettings.Width;
+                btnReloadFlows.Left = btnSettings.Left - 8 - btnReloadFlows.Width;
+                lblConnection.Width = btnReloadFlows.Left - lblConnection.Left - 12;
             };
 
-        private static Button MakeButton(string text, int x, int y, bool primary = false)
-            => new Button
+            connectionPanel.Controls.AddRange(new Control[]
             {
-                Text      = text,
-                Location  = new Point(x, y),
-                Width     = 80,
-                Height    = 26,
-                FlatStyle = FlatStyle.Flat,
-                BackColor = primary ? Color.FromArgb(0, 120, 212) : SystemColors.Control,
-                ForeColor = primary ? Color.White : SystemColors.ControlText,
-                Font      = new Font("Segoe UI", 9f, primary ? FontStyle.Bold : FontStyle.Regular),
-                FlatAppearance = { BorderColor = primary ? Color.FromArgb(0, 100, 180) : Color.FromArgb(200, 198, 196) }
+                lblConnectionCaption, lblConnection, btnReloadFlows, btnSettings, btnClose
+            });
+        }
+
+        private void BuildCommandPanel()
+        {
+            commandPanel.Dock = DockStyle.Top;
+            commandPanel.Height = 70;
+            commandPanel.Margin = new Padding(0, 16, 0, 0);
+            commandPanel.Padding = new Padding(14);
+            commandPanel.BackColor = Color.White;
+            commandPanel.BorderStyle = BorderStyle.FixedSingle;
+
+            lblFlowCaption.Location = new Point(14, 23);
+            lblFlowCaption.Size = new Size(48, 20);
+            btnFlowPicker.Location = new Point(68, 18);
+            btnFlowPicker.Anchor = AnchorStyles.Left | AnchorStyles.Top | AnchorStyles.Right;
+            btnFlowPicker.Size = new Size(520, 32);
+            btnFlowPicker.TextAlign = ContentAlignment.MiddleLeft;
+
+            btnRefreshRuns.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnRefreshRuns.Location = new Point(604, 18);
+            btnRefreshRuns.Size = new Size(110, 32);
+            btnTriggerColumns.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnTriggerColumns.Location = new Point(722, 18);
+            btnTriggerColumns.Size = new Size(126, 32);
+            btnAdvancedSearch.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnAdvancedSearch.Location = new Point(856, 18);
+            btnAdvancedSearch.Size = new Size(132, 32);
+
+            commandPanel.Resize += delegate
+            {
+                btnAdvancedSearch.Left = commandPanel.Width - 14 - btnAdvancedSearch.Width;
+                btnTriggerColumns.Left = btnAdvancedSearch.Left - 8 - btnTriggerColumns.Width;
+                btnRefreshRuns.Left = btnTriggerColumns.Left - 8 - btnRefreshRuns.Width;
+                btnFlowPicker.Width = btnRefreshRuns.Left - btnFlowPicker.Left - 12;
             };
+
+            commandPanel.Controls.AddRange(new Control[]
+            {
+                lblFlowCaption, btnFlowPicker, btnRefreshRuns, btnTriggerColumns, btnAdvancedSearch
+            });
+        }
+
+        private void BuildFlowPickerPanel()
+        {
+            flowPickerPanel.Width = 620;
+            flowPickerPanel.Height = 420;
+            flowPickerPanel.Padding = new Padding(12);
+            flowPickerPanel.BackColor = Color.FromArgb(245, 247, 250);
+            flowPickerPanel.BorderStyle = BorderStyle.FixedSingle;
+            flowPickerPanel.Visible = false;
+
+            txtFlowSearch.Dock = DockStyle.Top;
+            txtFlowSearch.Height = 24;
+
+            lstFlows.Dock = DockStyle.Fill;
+            lstFlows.IntegralHeight = false;
+
+            flowPickerPanel.Controls.Add(lstFlows);
+            flowPickerPanel.Controls.Add(txtFlowSearch);
+        }
+
+        private void BuildTriggerColumnsPanel()
+        {
+            triggerColumnsPanel.Width = 320;
+            triggerColumnsPanel.Height = 380;
+            triggerColumnsPanel.Padding = new Padding(12);
+            triggerColumnsPanel.BackColor = Color.FromArgb(245, 247, 250);
+            triggerColumnsPanel.BorderStyle = BorderStyle.FixedSingle;
+            triggerColumnsPanel.Visible = false;
+
+            lblTriggerColumnsCaption.Dock = DockStyle.Top;
+            lblTriggerColumnsCaption.Height = 24;
+            lblTriggerColumnsCaption.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            txtTriggerColumnSearch.Dock = DockStyle.Top;
+            txtTriggerColumnSearch.Height = 24;
+            clbTriggerColumns.Dock = DockStyle.Fill;
+            clbTriggerColumns.CheckOnClick = true;
+            clbTriggerColumns.IntegralHeight = false;
+
+            triggerColumnsPanel.Controls.Add(clbTriggerColumns);
+            triggerColumnsPanel.Controls.Add(txtTriggerColumnSearch);
+            triggerColumnsPanel.Controls.Add(lblTriggerColumnsCaption);
+        }
+
+        private void BuildDeviceCodePanel()
+        {
+            deviceCodePanel.Dock = DockStyle.Top;
+            deviceCodePanel.Height = 96;
+            deviceCodePanel.Margin = new Padding(0, 8, 0, 0);
+            deviceCodePanel.Padding = new Padding(12);
+            deviceCodePanel.BackColor = Color.White;
+            deviceCodePanel.BorderStyle = BorderStyle.FixedSingle;
+            deviceCodePanel.Visible = false;
+
+            lblDeviceMessage.Location = new Point(12, 8);
+            lblDeviceMessage.Size = new Size(760, 20);
+            lblDeviceUrlCaption.Location = new Point(12, 36);
+            lblDeviceUrlCaption.Size = new Size(48, 18);
+            lblDeviceUrl.Location = new Point(70, 34);
+            lblDeviceUrl.Size = new Size(640, 20);
+            btnCopyDeviceUrl.Location = new Point(720, 30);
+            btnCopyDeviceUrl.Size = new Size(70, 26);
+            lblDeviceCodeCaption.Location = new Point(12, 64);
+            lblDeviceCodeCaption.Size = new Size(48, 18);
+            lblDeviceCode.Location = new Point(70, 62);
+            lblDeviceCode.Size = new Size(640, 20);
+            lblDeviceCode.Font = new Font("Segoe UI", 9f, FontStyle.Bold);
+            btnCopyDeviceCode.Location = new Point(720, 58);
+            btnCopyDeviceCode.Size = new Size(70, 26);
+
+            deviceCodePanel.Controls.AddRange(new Control[]
+            {
+                lblDeviceMessage, lblDeviceUrlCaption, lblDeviceUrl, btnCopyDeviceUrl,
+                lblDeviceCodeCaption, lblDeviceCode, btnCopyDeviceCode
+            });
+
+        }
+
+        private void BuildResultsPanel()
+        {
+            resultsPanel.Dock = DockStyle.Fill;
+            resultsPanel.BackColor = Color.White;
+            resultsPanel.BorderStyle = BorderStyle.FixedSingle;
+            resultsPanel.Padding = new Padding(1);
+
+            dgvRuns.Dock = DockStyle.Fill;
+            dgvRuns.AllowUserToAddRows = false;
+            dgvRuns.AllowUserToDeleteRows = false;
+            dgvRuns.AutoGenerateColumns = false;
+            dgvRuns.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.DisplayedCells;
+            dgvRuns.BackgroundColor = Color.White;
+            dgvRuns.BorderStyle = BorderStyle.None;
+            dgvRuns.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
+            dgvRuns.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(243, 242, 241);
+            dgvRuns.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
+            dgvRuns.EnableHeadersVisualStyles = false;
+            dgvRuns.GridColor = Color.FromArgb(237, 235, 233);
+            dgvRuns.MultiSelect = false;
+            dgvRuns.ReadOnly = true;
+            dgvRuns.RowHeadersVisible = false;
+            dgvRuns.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+
+            dgvRuns.Columns.Add(new DataGridViewTextBoxColumn { Name = "colStarted", HeaderText = "Started", DataPropertyName = "StartedDisplay" });
+            dgvRuns.Columns.Add(new DataGridViewTextBoxColumn { Name = "colEnded", HeaderText = "Ended", DataPropertyName = "EndedDisplay" });
+            dgvRuns.Columns.Add(new DataGridViewTextBoxColumn { Name = "colStatus", HeaderText = "Status", DataPropertyName = "Status" });
+            dgvRuns.Columns.Add(new DataGridViewLinkColumn
+            {
+                Name = "colRunId",
+                HeaderText = "Run Id",
+                DataPropertyName = "Name",
+                LinkColor = Color.FromArgb(0, 120, 212),
+                TrackVisitedState = false
+            });
+
+            resultsPanel.Controls.Add(dgvRuns);
+        }
+
+        private void BuildBusyAndToastPanels()
+        {
+            busyPanel.Anchor = AnchorStyles.Right | AnchorStyles.Bottom;
+            busyPanel.Size = new Size(260, 48);
+            busyPanel.BackColor = Color.FromArgb(245, 247, 250);
+            busyPanel.BorderStyle = BorderStyle.FixedSingle;
+            busyPanel.Visible = false;
+            busyPanel.Padding = new Padding(12);
+            busyPanel.Controls.Add(progressBusy);
+            busyPanel.Controls.Add(lblBusy);
+
+            progressBusy.Style = ProgressBarStyle.Marquee;
+            progressBusy.Location = new Point(12, 18);
+            progressBusy.Size = new Size(86, 8);
+            lblBusy.Location = new Point(108, 14);
+            lblBusy.Size = new Size(130, 20);
+
+            toastPanel.Anchor = AnchorStyles.Bottom;
+            toastPanel.Size = new Size(180, 36);
+            toastPanel.BackColor = Color.FromArgb(245, 247, 250);
+            toastPanel.BorderStyle = BorderStyle.FixedSingle;
+            toastPanel.Visible = false;
+            toastPanel.Padding = new Padding(12, 8, 12, 8);
+            lblToast.Dock = DockStyle.Fill;
+            lblToast.TextAlign = ContentAlignment.MiddleCenter;
+            toastPanel.Controls.Add(lblToast);
+
+            Resize += delegate
+            {
+                busyPanel.Left = Width - busyPanel.Width - 24;
+                busyPanel.Top = Height - busyPanel.Height - 24;
+                toastPanel.Left = (Width - toastPanel.Width) / 2;
+                toastPanel.Top = Height - toastPanel.Height - 24;
+            };
+        }
+
+        private static Label MakeCaption(string text)
+        {
+            return new Label
+            {
+                Text = text,
+                AutoSize = false,
+                Font = new Font("Segoe UI", 9f),
+                ForeColor = Color.FromArgb(96, 94, 92),
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+        }
+
+        private static Label MakeBodyLabel(string text)
+        {
+            return new Label
+            {
+                Text = text,
+                AutoSize = false,
+                Font = new Font("Segoe UI", 9f),
+                ForeColor = SystemColors.ControlText,
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+        }
+
+        private static Label MakeMutedLabel(string text)
+        {
+            return new Label
+            {
+                Text = text,
+                Dock = DockStyle.Fill,
+                Font = new Font("Segoe UI", 9f),
+                ForeColor = Color.FromArgb(96, 94, 92),
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+        }
+
+        private static Button MakeButton(string text, bool primary)
+        {
+            var button = new Button
+            {
+                Text = text,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 9f, primary ? FontStyle.Bold : FontStyle.Regular),
+                BackColor = primary ? Color.FromArgb(0, 120, 212) : SystemColors.Control,
+                ForeColor = primary ? Color.White : SystemColors.ControlText
+            };
+            button.FlatAppearance.BorderColor = primary ? Color.FromArgb(0, 100, 180) : Color.FromArgb(200, 198, 196);
+            return button;
+        }
     }
 }

@@ -30,6 +30,9 @@
 
   <!-- XrmToolBox extensibility DLLs - copied into lib\ by build-and-install.ps1 -->
   <ItemGroup>
+    <Reference Include="FlowRunFinderV2.Core">
+      <HintPath>..\..\..\FlowRunFinderV2\src\FlowRunFinderV2\FlowRunFinderV2.Core\bin\Debug\netstandard2.0\FlowRunFinderV2.Core.dll</HintPath>
+    </Reference>
     <Reference Include="XrmToolBox.Extensibility">
       <HintPath>lib\XrmToolBox.Extensibility.dll</HintPath>
     </Reference>
@@ -45,11 +48,10 @@
   <!-- Dynamics 365 SDK - still from NuGet -->
   <ItemGroup>
     <PackageReference Include="Microsoft.CrmSdk.CoreAssemblies" Version="9.0.2.49" />
-    <!-- MSAL: silent token acquisition using Windows SSO / persisted cache (no sign-in prompts) -->
-    <PackageReference Include="Microsoft.Identity.Client" Version="4.61.3" />
+    <!-- MSAL: aligned with the V2 Core auth services. -->
+    <PackageReference Include="Microsoft.Identity.Client" Version="4.72.1" />
     <!-- ILRepack: merges MSAL DLLs into FlowRunFinder.dll so the plugin ships as a single file -->
     <PackageReference Include="ILRepack.Lib.MSBuild.Task" Version="2.0.34.1" PrivateAssets="all" />
   </ItemGroup>
-
 
 </Project>

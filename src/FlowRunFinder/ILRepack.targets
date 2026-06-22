@@ -8,6 +8,7 @@
   <Target Name="ILRepackMsal" AfterTargets="Build" Condition="$(Configuration.Contains('Release'))">
     <ItemGroup>
       <ILRepackInputs Include="$(OutputPath)$(AssemblyName).dll" />
+      <ILRepackInputs Include="$(OutputPath)FlowRunFinderV2.Core.dll" />
       <ILRepackInputs Include="$(OutputPath)Microsoft.Identity.Client.dll" />
       <ILRepackInputs Include="$(OutputPath)Microsoft.IdentityModel.Abstractions.dll" />
       <ILRepackInputs Include="$(OutputPath)Microsoft.Bcl.AsyncInterfaces.dll" />
