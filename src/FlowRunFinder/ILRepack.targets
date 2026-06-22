@@ -5,7 +5,7 @@
     We use distinct target names so the package's same-named stubs (with false conditions)
     do not shadow ours at MSBuild override resolution time.
   -->
-  <Target Name="ILRepackMsal" AfterTargets="Build" Condition="$(Configuration.Contains('Release'))">
+  <Target Name="ILRepackDependencies" AfterTargets="Build" Condition="$(Configuration.Contains('Release'))">
     <ItemGroup>
       <ILRepackInputs Include="$(OutputPath)$(AssemblyName).dll" />
       <ILRepackInputs Include="$(OutputPath)FlowRunFinderV2.Core.dll" />
@@ -31,12 +31,13 @@
       Parallel="true"
       LibraryPath="$(OutputPath)"
     />
-    <Message Importance="high" Text="ILRepack: merged MSAL DLLs into $(OutputPath)$(AssemblyName).dll" />
+    <Message Importance="high" Text="ILRepack: merged plugin dependencies into $(OutputPath)$(AssemblyName).dll" />
   </Target>
 
-  <!-- Remove the now-redundant loose MSAL DLLs from the output folder. -->
-  <Target Name="CleanMsalDlls" AfterTargets="ILRepackMsal" Condition="$(Configuration.Contains('Release'))">
+  <!-- Remove the now-redundant loose DLLs from the output folder. -->
+  <Target Name="CleanMergedDependencyDlls" AfterTargets="ILRepackDependencies" Condition="$(Configuration.Contains('Release'))">
     <Delete Files="
+      $(OutputPath)FlowRunFinderV2.Core.dll;
       $(OutputPath)Microsoft.Identity.Client.dll;
       $(OutputPath)Microsoft.IdentityModel.Abstractions.dll;
       $(OutputPath)Microsoft.Bcl.AsyncInterfaces.dll;
@@ -50,6 +51,6 @@
       $(OutputPath)System.Text.Encodings.Web.dll;
       $(OutputPath)System.ValueTuple.dll
     " />
-    <Message Importance="high" Text="ILRepack: removed loose MSAL DLLs from output" />
+    <Message Importance="high" Text="ILRepack: removed loose merged dependency DLLs from output" />
   </Target>
 </Project>
