@@ -31,7 +31,7 @@
   <!-- XrmToolBox extensibility DLLs - copied into lib\ by build-and-install.ps1 -->
   <ItemGroup>
     <Reference Include="FlowRunFinderV2.Core">
-      <HintPath>..\..\..\FlowRunFinderV2\src\FlowRunFinderV2\FlowRunFinderV2.Core\bin\Debug\netstandard2.0\FlowRunFinderV2.Core.dll</HintPath>
+      <HintPath>..\..\..\FlowRunFinderV2\src\FlowRunFinderV2\FlowRunFinderV2.Core\bin\Release\netstandard2.0\FlowRunFinderV2.Core.dll</HintPath>
     </Reference>
     <Reference Include="XrmToolBox.Extensibility">
       <HintPath>lib\XrmToolBox.Extensibility.dll</HintPath>
