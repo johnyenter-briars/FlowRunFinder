@@ -1,68 +1,138 @@
+<p align="center">
+  <img src="img/flow-run-finder-icon.svg" width="96" alt="Flow Run Finder icon" />
+</p>
+
 # Flow Run Finder
 
-An [XrmToolBox](https://www.xrmtoolbox.com) plugin that lets you filter Power Automate cloud flow runs by date and time, and navigate directly to any run in the Power Automate portal with a single click.
+Flow Run Finder is an XrmToolBox plugin for finding Power Automate flow runs and inspecting the related trigger data.
 
----
+It is useful when you know a flow ran, but need to answer questions like:
+
+- Which run handled this record?
+- What trigger payload did the flow receive?
+- Did any runs fire for this account, contact, row id, user id, status, or other trigger value?
+- What happened during a specific UTC time window?
+- Which trigger fields are worth comparing across recent runs?
+
+This plugin hosts the shared `FlowRunFinderV2.Core` logic from [Flow Run Finder V2](https://github.com/johnyenter-briars/FlowRunFinderV2).
 
 ## Features
 
-- **Filter by date/time range** — query flow runs across any time window, not just the default 28-day view in Power Automate
-- **Single flow or All Flows mode** — search runs for a specific flow, or scan across every flow in the environment
-- **Live flow search** — type to filter the flow list as you go
-- **Deep-link navigation** — click any run to open it directly in the Power Automate portal
-- **Add Columns** — fetch trigger output fields (e.g. Case Number, Subject) from the PA REST API and display them as extra columns in the results grid
-- **Delete runs** — select one or more runs and delete them via the Power Automate REST API
-- **Silent authentication** — signs in once via a browser prompt, then caches the token (DPAPI-encrypted) so subsequent sessions need no interaction
-- **Auto-detect environment ID** — resolves the correct Power Platform environment GUID automatically from your Dataverse connection
+- Flow picker for searching and selecting cloud flows from the connected environment.
+- Latest run history for the selected flow.
+- Advanced UTC date-window search with trigger input filters.
+- Dataverse `flowrun` history table mode or Power Platform API mode.
+- Dynamic trigger columns for showing trigger input/output values in the results grid.
+- Run links to make.powerautomate.com, plus right-click copy behavior.
+- Local token caching and daily logs under the plugin's app data folder.
 
----
+## Screenshots
+
+![Flow run search results](img/search-results.png)
+
+![Advanced search dialog](img/advanced-search-dialog.png)
+
+![Trigger columns in results grid](img/trigger-columns.png)
+
+## Setting Up A Connection
+
+Connect XrmToolBox to your Dataverse / Dynamics 365 environment as normal, then open **Flow Run Finder** from the plugin list.
+
+The plugin uses the active XrmToolBox connection only to identify the environment URL. It does **not** use the native XrmToolBox connection token for Core operations.
+
+Authentication for Dataverse and Power Automate is handled by `FlowRunFinderV2.Core` through Microsoft device-code authentication and local MSAL token caching. This is intentional because the plugin depends on the same Core authentication model used by Flow Run Finder V2.
+
+## Using The Tool
+
+After opening the plugin, click **Reload Flows** to authenticate and load cloud flows from the connected environment.
+
+Select a cloud flow from the flow picker, then click **Refresh Runs** to load recent runs. The grid shows run timing, status, run id, links, and selected trigger columns.
+
+Use **Trigger Columns** to choose which trigger fields should appear in the grid. The list is based on trigger payloads returned for loaded runs, so it can include custom Dataverse columns and dynamic trigger values.
+
+Use **Advanced Search** when recent runs are not enough. Set a UTC start and end time, then search against trigger input values.
+
+Click a run id to open the run in Power Automate. Right-click a run id to copy the run URL, or right-click another grid cell to copy that value.
+
+## Settings
+
+The settings screen supports:
+
+- Default run count
+- Max runs to query
+- Flow run history table toggle
+- Dataverse client ID
+- Power Automate client ID
+- Log verbosity
+
+The flow run history table toggle controls whether run queries use the Dataverse `flowrun` table or the Power Platform API.
+
+## Local Files
+
+The plugin keeps its local data here:
+
+```text
+%LOCALAPPDATA%\FlowRunFinder
+```
+
+Notable files and folders:
+
+- `settings.json`: plugin settings and selected trigger columns
+- `connections`: per-environment token caches
+- `logs`: daily log files
+
+Token cache files are stored per environment connection under:
+
+```text
+%LOCALAPPDATA%\FlowRunFinder\connections\<connection-guid>\
+```
+
+Typical cache files include:
+
+```text
+dataverse_msal_cache.bin3
+power_automate_msal_cache.bin3
+```
+
+To force re-authentication, delete the relevant cache folder under `%LOCALAPPDATA%\FlowRunFinder\connections`.
 
 ## Installation
 
-1. Open **XrmToolBox**
-2. Click **Plugin Store** in the toolbar
-3. Search for **Flow Run Finder**
-4. Click **Install**
-5. Restart XrmToolBox
-
----
-
-## Usage
-
-1. Connect XrmToolBox to your Dataverse / Dynamics 365 environment as normal
-2. Open **Flow Run Finder** from the plugin list
-3. Click **Reload Flows** to load all cloud flows from the environment
-4. Select a flow from the dropdown (or leave it blank to search all flows)
-5. Set a **From** and **To** date/time range
-6. Click **Find Runs**
-7. Click any row to open that run directly in Power Automate
-
-### Add Columns
-Click **Add Columns** after results load to fetch trigger output data (e.g. fields from a Dataverse record that triggered the flow) and display them as additional columns in the grid.
-
-### Delete Runs
-Check the rows you want to remove and click **Delete Selected**. Deletion uses the Power Automate REST API.
-
----
+1. Open **XrmToolBox**.
+2. Click **Plugin Store** in the toolbar.
+3. Search for **Flow Run Finder**.
+4. Click **Install**.
+5. Restart XrmToolBox.
 
 ## Requirements
 
 - [XrmToolBox](https://www.xrmtoolbox.com) v1.2025.10.74 or later
-- A Power Automate / Power Platform environment connected via XrmToolBox
-- Internet access for the Power Automate REST API and first-time authentication
+- A Power Automate / Power Platform environment
+- Internet access for Dataverse, the Power Automate REST API, and first-time device-code authentication
 
----
+## Development
 
-## Authentication
+This project depends on `FlowRunFinderV2.Core` from the [Flow Run Finder V2 repo](https://github.com/johnyenter-briars/FlowRunFinderV2).
 
-The plugin uses [MSAL](https://github.com/AzureAD/microsoft-authentication-library-for-dotnet) with the Azure PowerShell public client ID — a Microsoft-managed app registration that is pre-approved in all tenants and requires no admin consent.
+For local builds, the Flow Run Finder V2 repo must be downloaded locally at the relative path referenced by the project file, and the Core DLL must already exist under the V2 Core build output:
 
-On first use you will be prompted to sign in via a browser window. After that, the token is cached in `%LOCALAPPDATA%\FlowRunFinder\msalcache.dat` (DPAPI-encrypted, per-user) and silently refreshed on subsequent sessions.
+```text
+..\..\..\FlowRunFinderV2\src\FlowRunFinderV2\FlowRunFinderV2.Core\bin\Debug\netstandard2.0\FlowRunFinderV2.Core.dll
+```
 
-To force re-authentication, delete `%LOCALAPPDATA%\FlowRunFinder\msalcache.dat`.
+That direct DLL reference is intentional for now. If the V2 Core project changes, rebuild `FlowRunFinderV2.Core` first so this XrmToolBox plugin picks up the updated API surface.
 
----
+Release packaging uses ILRepack to merge `FlowRunFinderV2.Core.dll` into `FlowRunFinder.dll`.
+
+| Component | Description |
+| --- | --- |
+| `FlowRunFinder` | XrmToolBox `net48` plugin UI and host integration. |
+| `FlowRunFinderV2.Core` | Shared .NET Standard 2.0 application logic for auth, clients, settings, logging, models, and query behavior. |
+
+## AI Disclosure
+
+- AI-assisted tooling was used in the development of this codebase.
 
 ## License
 
-MIT — see [LICENSE](LICENSE)
+- License: [MIT](LICENSE)
