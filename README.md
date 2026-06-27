@@ -20,7 +20,7 @@ This plugin hosts the shared `FlowRunFinderV2.Core` logic from [Flow Run Finder 
 
 - Flow picker for searching and selecting cloud flows from the connected environment.
 - Latest run history for the selected flow.
-- Advanced UTC date-window search with trigger input filters.
+- Advanced UTC date-window search with nested `AND` / `OR` trigger input filters.
 - Dataverse `flowrun` history table mode or Power Platform API mode.
 - Dynamic trigger columns for showing trigger input/output values in the results grid.
 - Run links to make.powerautomate.com, plus right-click copy behavior.
@@ -50,7 +50,7 @@ Select a cloud flow from the flow picker, then click **Refresh Runs** to load re
 
 Use **Trigger Columns** to choose which trigger fields should appear in the grid. The list is based on trigger payloads returned for loaded runs, so it can include custom Dataverse columns and dynamic trigger values.
 
-Use **Advanced Search** when recent runs are not enough. Set a UTC start and end time, then search against trigger input values.
+Use **Advanced Search** when recent runs are not enough. Set a UTC start and end time, then add filters against trigger input values. Filters can be grouped with nested `AND` and `OR` logic.
 
 Click a run id to open the run in Power Automate. Right-click a run id to copy the run URL, or right-click another grid cell to copy that value.
 
