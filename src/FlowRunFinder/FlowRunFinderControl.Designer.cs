@@ -158,6 +158,7 @@ namespace FlowRunFinder
             btnCopyDeviceUrl.Click += btnCopyDeviceUrl_Click;
             btnCopyDeviceCode.Click += btnCopyDeviceCode_Click;
             dgvRuns.CellContentClick += dgvRuns_CellContentClick;
+            dgvRuns.CellMouseDown += dgvRuns_CellMouseDown;
 
             AutoScaleMode = AutoScaleMode.Font;
             ResumeLayout(false);

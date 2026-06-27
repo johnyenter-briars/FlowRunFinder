@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -27,7 +28,12 @@ namespace FlowRunFinder
     {
         private const int FixedRunColumnCount = 4;
 
-        private readonly AppDataStore _appDataStore = new AppDataStore();
+        private static readonly string AppDataFolder = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "FlowRunFinder");
+        private static readonly string LogsFolder = Path.Combine(AppDataFolder, "logs");
+        private static readonly string ConnectionsFolder = Path.Combine(AppDataFolder, "connections");
+
         private readonly CoreSettingsManager _settingsManager;
         private readonly AppLogger _logger;
         private readonly List<CloudFlow> _flows = new List<CloudFlow>();
@@ -52,8 +58,12 @@ namespace FlowRunFinder
 
         public FlowRunFinderControl()
         {
-            _settingsManager = new CoreSettingsManager(_appDataStore.AppDataFolder);
-            _logger = new AppLogger(_appDataStore.LogsFolder);
+            Directory.CreateDirectory(AppDataFolder);
+            Directory.CreateDirectory(LogsFolder);
+            Directory.CreateDirectory(ConnectionsFolder);
+
+            _settingsManager = new CoreSettingsManager(AppDataFolder);
+            _logger = new AppLogger(LogsFolder);
 
             InitializeComponent();
 
@@ -117,8 +127,7 @@ namespace FlowRunFinder
             };
 
             _logger.SetConnection(_currentConnection);
-            _dataverseAuthService = new DataverseAuthService(_appDataStore.GetDataverseTokenCachePath(_currentConnection.Id));
-            _powerAutomateAuthService = new PowerAutomateAuthService(_appDataStore.GetPowerAutomateTokenCachePath(_currentConnection.Id));
+            ConfigureAuthServices(_currentConnection);
 
             lblConnection.Text = _currentConnection.Name + " - " + _currentConnection.EnvironmentUrl;
             btnReloadFlows.Enabled = true;
@@ -279,10 +288,9 @@ namespace FlowRunFinder
                     cancellationToken).ConfigureAwait(true);
                 ClearDeviceCodePrompt();
 
-                using (var paClient = new PowerAutomateClient(paToken.AccessToken, _logger))
+                using (var queryEngine = new FlowRunQueryEngine(paToken.AccessToken, _dataverseClient, _logger))
                 {
-                    var queryEngine = new FlowRunQueryEngine(paClient, _logger);
-                    var environmentId = await paClient.DetectEnvironmentIdAsync(_environmentUrl, cancellationToken).ConfigureAwait(true);
+                    var environmentId = await queryEngine.DetectEnvironmentIdAsync(_environmentUrl, cancellationToken).ConfigureAwait(true);
                     if (string.IsNullOrWhiteSpace(environmentId))
                     {
                         SetStatus("Could not detect the matching Power Automate environment id.");
@@ -290,9 +298,11 @@ namespace FlowRunFinder
                     }
 
                     var runs = await queryEngine.GetLatestRunsAsync(
-                        environmentId,
-                        _selectedFlow.WorkflowId,
-                        _settings.DefaultRunCount,
+                        new LatestFlowRunsRequest(
+                            environmentId,
+                            _selectedFlow.WorkflowId,
+                            _settings.DefaultRunCount,
+                            _settings.UseFlowRunHistoryTable),
                         cancellationToken).ConfigureAwait(true);
 
                     ApplyRuns(runs);
@@ -342,10 +352,9 @@ namespace FlowRunFinder
                     cancellationToken).ConfigureAwait(true);
                 ClearDeviceCodePrompt();
 
-                using (var paClient = new PowerAutomateClient(paToken.AccessToken, _logger))
+                using (var queryEngine = new FlowRunQueryEngine(paToken.AccessToken, _dataverseClient, _logger))
                 {
-                    var queryEngine = new FlowRunQueryEngine(paClient, _logger);
-                    var environmentId = await paClient.DetectEnvironmentIdAsync(_environmentUrl, cancellationToken).ConfigureAwait(true);
+                    var environmentId = await queryEngine.DetectEnvironmentIdAsync(_environmentUrl, cancellationToken).ConfigureAwait(true);
                     if (string.IsNullOrWhiteSpace(environmentId))
                     {
                         SetStatus("Could not detect the matching Power Automate environment id.");
@@ -353,11 +362,14 @@ namespace FlowRunFinder
                     }
 
                     var runs = await queryEngine.SearchRunsAsync(
-                        environmentId,
-                        flow.WorkflowId,
-                        request.StartUtc,
-                        request.EndUtc,
-                        request.Filter,
+                        new FlowRunSearchRequest(
+                            environmentId,
+                            flow.WorkflowId,
+                            request.StartUtc,
+                            request.EndUtc,
+                            request.Filter,
+                            _settings.MaxRunsToQuery,
+                            _settings.UseFlowRunHistoryTable),
                         cancellationToken).ConfigureAwait(true);
 
                     ApplyRuns(runs);
@@ -428,13 +440,22 @@ namespace FlowRunFinder
                 await _settingsManager.UpdateAsync(settings =>
                 {
                     settings.DefaultRunCount = dialog.DefaultRunCount;
+                    settings.MaxRunsToQuery = dialog.MaxRunsToQuery;
+                    settings.UseFlowRunHistoryTable = dialog.UseFlowRunHistoryTable;
+                    settings.DataverseClientId = dialog.DataverseClientId;
+                    settings.PowerAutomateClientId = dialog.PowerAutomateClientId;
                     settings.LogVerbosity = dialog.LogVerbosity;
                 }).ConfigureAwait(true);
 
                 _settings = _settingsManager.Current;
                 NormalizeSettings();
+                if (_currentConnection != null)
+                {
+                    ConfigureAuthServices(_currentConnection);
+                }
+
                 _logger.SetVerbosity(_settings.LogVerbosity);
-                SetStatus("Settings saved. Default run query count is " + _settings.DefaultRunCount + ".");
+                SetStatus("Settings saved. Default run count is " + _settings.DefaultRunCount + "; max runs to query is " + _settings.MaxRunsToQuery + ".");
             }
         }
 
@@ -481,6 +502,44 @@ namespace FlowRunFinder
                 FileName = row.RunUrl,
                 UseShellExecute = true
             });
+        }
+
+        private void dgvRuns_CellMouseDown(object sender, DataGridViewCellMouseEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.ColumnIndex < 0 || e.Button != MouseButtons.Right)
+            {
+                return;
+            }
+
+            var row = dgvRuns.Rows[e.RowIndex].DataBoundItem as RunGridRow;
+            if (row == null)
+            {
+                return;
+            }
+
+            string textToCopy;
+            if (dgvRuns.Columns[e.ColumnIndex].Name == "colRunId")
+            {
+                textToCopy = row.RunUrl;
+                if (string.IsNullOrWhiteSpace(textToCopy))
+                {
+                    textToCopy = row.Name;
+                }
+            }
+            else
+            {
+                var value = dgvRuns.Rows[e.RowIndex].Cells[e.ColumnIndex].Value;
+                textToCopy = value == null ? string.Empty : value.ToString();
+            }
+
+            if (string.IsNullOrWhiteSpace(textToCopy))
+            {
+                return;
+            }
+
+            Clipboard.SetText(textToCopy);
+            ShowToast("Copied to clipboard");
+            SetStatus(dgvRuns.Columns[e.ColumnIndex].Name == "colRunId" ? "Run URL copied." : "Cell value copied.");
         }
 
         private void ApplyRuns(IEnumerable<FlowRun> runs)
@@ -738,6 +797,17 @@ namespace FlowRunFinder
         {
             if (_settings.DefaultRunCount < 1) _settings.DefaultRunCount = 1;
             if (_settings.DefaultRunCount > 100) _settings.DefaultRunCount = 100;
+            if (_settings.MaxRunsToQuery < 1) _settings.MaxRunsToQuery = 1;
+            if (!Guid.TryParse(_settings.DataverseClientId, out _))
+            {
+                _settings.DataverseClientId = AuthenticationClientIds.Dataverse;
+            }
+
+            if (!Guid.TryParse(_settings.PowerAutomateClientId, out _))
+            {
+                _settings.PowerAutomateClientId = AuthenticationClientIds.PowerAutomate;
+            }
+
             if (!Enum.IsDefined(typeof(LogVerbosity), _settings.LogVerbosity))
             {
                 _settings.LogVerbosity = LogVerbosity.Info;
@@ -747,6 +817,18 @@ namespace FlowRunFinder
             {
                 _settings.SelectedTriggerColumnsByFlowId = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
             }
+        }
+
+        private void ConfigureAuthServices(ConnectionProfile connection)
+        {
+            var tokenCacheOptions = new TokenCacheOptions(GetConnectionFolder(connection.Id));
+            _dataverseAuthService = new DataverseAuthService(tokenCacheOptions, _settings.DataverseClientId);
+            _powerAutomateAuthService = new PowerAutomateAuthService(tokenCacheOptions, _settings.PowerAutomateClientId);
+        }
+
+        private static string GetConnectionFolder(Guid connectionId)
+        {
+            return Path.Combine(ConnectionsFolder, connectionId.ToString("D"));
         }
 
         private void BeginBusy()
