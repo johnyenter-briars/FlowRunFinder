@@ -334,6 +334,8 @@ namespace FlowRunFinder
             dgvRuns.CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal;
             dgvRuns.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(243, 242, 241);
             dgvRuns.ColumnHeadersDefaultCellStyle.Font = new Font("Segoe UI", 8.5f, FontStyle.Bold);
+            dgvRuns.DefaultCellStyle.SelectionBackColor = Color.FromArgb(210, 228, 255);
+            dgvRuns.DefaultCellStyle.SelectionForeColor = Color.Black;
             dgvRuns.EnableHeadersVisualStyles = false;
             dgvRuns.GridColor = Color.FromArgb(237, 235, 233);
             dgvRuns.MultiSelect = false;
