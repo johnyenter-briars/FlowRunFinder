@@ -24,6 +24,7 @@ This plugin hosts the shared `FlowRunFinderV2.Core` logic from [Flow Run Finder 
 - Dataverse `flowrun` history table mode or Power Platform API mode.
 - Dynamic trigger columns for showing trigger input/output values in the results grid.
 - Run links to make.powerautomate.com, plus right-click copy behavior.
+- Configurable authentication flow, plus Dataverse and Power Automate public client IDs.
 - Local token caching and daily logs under the plugin's app data folder.
 
 ## Screenshots
@@ -40,7 +41,7 @@ Connect XrmToolBox to your Dataverse / Dynamics 365 environment as normal, then 
 
 The plugin uses the active XrmToolBox connection only to identify the environment URL. It does **not** use the native XrmToolBox connection token for Core operations.
 
-Authentication for Dataverse and Power Automate is handled by `FlowRunFinderV2.Core` through Microsoft device-code authentication and local MSAL token caching. This is intentional because the plugin depends on the same Core authentication model used by Flow Run Finder V2.
+Authentication for Dataverse and Power Automate is handled by `FlowRunFinderV2.Core` through Microsoft interactive browser or device-code authentication and local MSAL token caching. This is intentional because the plugin depends on the same Core authentication model used by Flow Run Finder V2.
 
 ## Using The Tool
 
@@ -50,7 +51,9 @@ Select a cloud flow from the flow picker, then click **Refresh Runs** to load re
 
 Use **Trigger Columns** to choose which trigger fields should appear in the grid. The list is based on trigger payloads returned for loaded runs, so it can include custom Dataverse columns and dynamic trigger values.
 
-Use **Advanced Search** when recent runs are not enough. Set a UTC start and end time, then add filters against trigger input values. Filters can be grouped with nested `AND` and `OR` logic.
+Use **Advanced Search** when recent runs are not enough. Set a local start and end date/time, then add filters against trigger input values. Filters can be grouped with nested `AND` and `OR` logic.
+
+The advanced search date/time controls use local date and time inputs, then convert the selected values to UTC for the run query.
 
 Click a run id to open the run in Power Automate. Right-click a run id to copy the run URL, or right-click another grid cell to copy that value.
 
@@ -61,6 +64,7 @@ The settings screen supports:
 - Default run count
 - Max runs to query
 - Flow run history table toggle
+- Authentication flow
 - Dataverse client ID
 - Power Automate client ID
 - Log verbosity
@@ -87,14 +91,19 @@ Token cache files are stored per environment connection under:
 %LOCALAPPDATA%\FlowRunFinder\connections\<connection-guid>\
 ```
 
-Typical cache files include:
+Device-code cache files are stored under:
 
 ```text
-dataverse_msal_cache.bin3
-power_automate_msal_cache.bin3
+%LOCALAPPDATA%\FlowRunFinder\connections\<connection-guid>\auth\devicecode\
 ```
 
-To force re-authentication, delete the relevant cache folder under `%LOCALAPPDATA%\FlowRunFinder\connections`.
+Interactive browser cache files are stored under:
+
+```text
+%LOCALAPPDATA%\FlowRunFinder\connections\<connection-guid>\auth\interactivebrowser\
+```
+
+To force re-authentication, delete the relevant auth cache folder under `%LOCALAPPDATA%\FlowRunFinder\connections`.
 
 ## Installation
 
@@ -108,7 +117,7 @@ To force re-authentication, delete the relevant cache folder under `%LOCALAPPDAT
 
 - [XrmToolBox](https://www.xrmtoolbox.com) v1.2025.10.74 or later
 - A Power Automate / Power Platform environment
-- Internet access for Dataverse, the Power Automate REST API, and first-time device-code authentication
+- Internet access for Dataverse, the Power Automate REST API, and first-time interactive browser or device-code authentication
 
 ## Development
 

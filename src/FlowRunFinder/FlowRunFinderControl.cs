@@ -442,6 +442,7 @@ namespace FlowRunFinder
                     settings.DefaultRunCount = dialog.DefaultRunCount;
                     settings.MaxRunsToQuery = dialog.MaxRunsToQuery;
                     settings.UseFlowRunHistoryTable = dialog.UseFlowRunHistoryTable;
+                    settings.AuthenticationFlow = dialog.AuthenticationFlow;
                     settings.DataverseClientId = dialog.DataverseClientId;
                     settings.PowerAutomateClientId = dialog.PowerAutomateClientId;
                     settings.LogVerbosity = dialog.LogVerbosity;
@@ -800,7 +801,7 @@ namespace FlowRunFinder
             if (_settings.MaxRunsToQuery < 1) _settings.MaxRunsToQuery = 1;
             if (!Guid.TryParse(_settings.DataverseClientId, out _))
             {
-                _settings.DataverseClientId = AuthenticationClientIds.Dataverse;
+                _settings.DataverseClientId = AuthenticationClientIds.PowerAutomate;
             }
 
             if (!Guid.TryParse(_settings.PowerAutomateClientId, out _))
@@ -813,6 +814,11 @@ namespace FlowRunFinder
                 _settings.LogVerbosity = LogVerbosity.Info;
             }
 
+            if (!Enum.IsDefined(typeof(AuthenticationFlow), _settings.AuthenticationFlow))
+            {
+                _settings.AuthenticationFlow = AuthenticationFlow.InteractiveBrowser;
+            }
+
             if (_settings.SelectedTriggerColumnsByFlowId == null)
             {
                 _settings.SelectedTriggerColumnsByFlowId = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
@@ -822,8 +828,14 @@ namespace FlowRunFinder
         private void ConfigureAuthServices(ConnectionProfile connection)
         {
             var tokenCacheOptions = new TokenCacheOptions(GetConnectionFolder(connection.Id));
-            _dataverseAuthService = new DataverseAuthService(tokenCacheOptions, _settings.DataverseClientId);
-            _powerAutomateAuthService = new PowerAutomateAuthService(tokenCacheOptions, _settings.PowerAutomateClientId);
+            _dataverseAuthService = new DataverseAuthService(
+                tokenCacheOptions,
+                _settings.DataverseClientId,
+                _settings.AuthenticationFlow);
+            _powerAutomateAuthService = new PowerAutomateAuthService(
+                tokenCacheOptions,
+                _settings.PowerAutomateClientId,
+                _settings.AuthenticationFlow);
         }
 
         private static string GetConnectionFolder(Guid connectionId)

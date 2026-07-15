@@ -11,6 +11,7 @@ namespace FlowRunFinder
         private readonly NumericUpDown _defaultRunCount;
         private readonly NumericUpDown _maxRunsToQuery;
         private readonly CheckBox _useFlowRunHistoryTable;
+        private readonly ComboBox _authenticationFlow;
         private readonly TextBox _dataverseClientId;
         private readonly TextBox _powerAutomateClientId;
         private readonly ComboBox _logVerbosity;
@@ -23,7 +24,7 @@ namespace FlowRunFinder
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
-            ClientSize = new Size(560, 310);
+            ClientSize = new Size(560, 350);
 
             var defaultRunCountLabel = MakeLabel("Default run count", 18, 22);
             _defaultRunCount = new NumericUpDown
@@ -54,42 +55,54 @@ namespace FlowRunFinder
                 Checked = settings.UseFlowRunHistoryTable
             };
 
-            var dataverseClientIdLabel = MakeLabel("Dataverse client ID", 18, 138);
-            _dataverseClientId = new TextBox
+            var authenticationFlowLabel = MakeLabel("Auth flow", 18, 138);
+            _authenticationFlow = new ComboBox
             {
                 Location = new Point(190, 134),
                 Width = 320,
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+            _authenticationFlow.Items.AddRange(Enum.GetNames(typeof(AuthenticationFlow)));
+            _authenticationFlow.SelectedItem = Enum.IsDefined(typeof(AuthenticationFlow), settings.AuthenticationFlow)
+                ? settings.AuthenticationFlow.ToString()
+                : AuthenticationFlow.InteractiveBrowser.ToString();
+
+            var dataverseClientIdLabel = MakeLabel("Dataverse client ID", 18, 178);
+            _dataverseClientId = new TextBox
+            {
+                Location = new Point(190, 174),
+                Width = 320,
                 Text = string.IsNullOrWhiteSpace(settings.DataverseClientId)
-                    ? AuthenticationClientIds.Dataverse
+                    ? AuthenticationClientIds.PowerAutomate
                     : settings.DataverseClientId
             };
 
-            var powerAutomateClientIdLabel = MakeLabel("Power Automate client ID", 18, 178);
+            var powerAutomateClientIdLabel = MakeLabel("Power Automate client ID", 18, 218);
             _powerAutomateClientId = new TextBox
             {
-                Location = new Point(190, 174),
+                Location = new Point(190, 214),
                 Width = 320,
                 Text = string.IsNullOrWhiteSpace(settings.PowerAutomateClientId)
                     ? AuthenticationClientIds.PowerAutomate
                     : settings.PowerAutomateClientId
             };
 
-            var verbosityLabel = MakeLabel("Log verbosity", 18, 218);
+            var verbosityLabel = MakeLabel("Log verbosity", 18, 258);
             _logVerbosity = new ComboBox
             {
-                Location = new Point(190, 214),
+                Location = new Point(190, 254),
                 Width = 320,
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
             _logVerbosity.Items.AddRange(Enum.GetNames(typeof(LogVerbosity)));
             _logVerbosity.SelectedItem = settings.LogVerbosity.ToString();
 
-            _validation = MakeLabel("", 18, 248);
+            _validation = MakeLabel("", 18, 288);
             _validation.ForeColor = Color.FromArgb(164, 38, 44);
             _validation.Width = 492;
 
-            var saveButton = new Button { Text = "Save", Location = new Point(354, 270), Size = new Size(75, 28), DialogResult = DialogResult.None };
-            var cancelButton = new Button { Text = "Cancel", Location = new Point(435, 270), Size = new Size(75, 28), DialogResult = DialogResult.Cancel };
+            var saveButton = new Button { Text = "Save", Location = new Point(354, 310), Size = new Size(75, 28), DialogResult = DialogResult.None };
+            var cancelButton = new Button { Text = "Cancel", Location = new Point(435, 310), Size = new Size(75, 28), DialogResult = DialogResult.Cancel };
             saveButton.Click += SaveButton_Click;
 
             Controls.AddRange(new Control[]
@@ -97,6 +110,7 @@ namespace FlowRunFinder
                 defaultRunCountLabel, _defaultRunCount,
                 maxRunsToQueryLabel, _maxRunsToQuery,
                 _useFlowRunHistoryTable,
+                authenticationFlowLabel, _authenticationFlow,
                 dataverseClientIdLabel, _dataverseClientId,
                 powerAutomateClientIdLabel, _powerAutomateClientId,
                 verbosityLabel, _logVerbosity,
@@ -110,6 +124,7 @@ namespace FlowRunFinder
         public int DefaultRunCount { get; private set; }
         public int MaxRunsToQuery { get; private set; }
         public bool UseFlowRunHistoryTable { get; private set; }
+        public AuthenticationFlow AuthenticationFlow { get; private set; }
         public string DataverseClientId { get; private set; }
         public string PowerAutomateClientId { get; private set; }
         public LogVerbosity LogVerbosity { get; private set; }
@@ -138,9 +153,16 @@ namespace FlowRunFinder
                 verbosity = LogVerbosity.Info;
             }
 
+            AuthenticationFlow authenticationFlow;
+            if (!Enum.TryParse(_authenticationFlow.SelectedItem as string, out authenticationFlow))
+            {
+                authenticationFlow = AuthenticationFlow.InteractiveBrowser;
+            }
+
             DefaultRunCount = (int)_defaultRunCount.Value;
             MaxRunsToQuery = (int)_maxRunsToQuery.Value;
             UseFlowRunHistoryTable = _useFlowRunHistoryTable.Checked;
+            AuthenticationFlow = authenticationFlow;
             DataverseClientId = dataverseClientId;
             PowerAutomateClientId = powerAutomateClientId;
             LogVerbosity = verbosity;

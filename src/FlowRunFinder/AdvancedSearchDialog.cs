@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Globalization;
 using System.Linq;
 using System.Windows.Forms;
 using FlowRunFinderV2.Core.Query;
@@ -18,8 +17,10 @@ namespace FlowRunFinder
 
         private readonly IReadOnlyList<string> _fieldNames;
         private readonly AdvancedSearchGroup _rootGroup;
-        private readonly TextBox _startUtc;
-        private readonly TextBox _endUtc;
+        private readonly DateTimePicker _startDate;
+        private readonly DateTimePicker _startTime;
+        private readonly DateTimePicker _endDate;
+        private readonly DateTimePicker _endTime;
         private readonly Label _validation;
         private readonly Panel _filterBuilderPanel;
 
@@ -53,21 +54,44 @@ namespace FlowRunFinder
             }
 
             var now = DateTimeOffset.UtcNow;
-            _startUtc = new TextBox
+            var initialStart = (initialState != null && initialState.StartUtc.HasValue ? initialState.StartUtc.Value : now.AddHours(-1)).ToLocalTime();
+            var initialEnd = (initialState != null && initialState.EndUtc.HasValue ? initialState.EndUtc.Value : now).ToLocalTime();
+
+            _startDate = new DateTimePicker
             {
-                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+                Anchor = AnchorStyles.Top | AnchorStyles.Left,
                 Location = new Point(130, 18),
-                Width = ClientSize.Width - 160,
-                Text = (initialState != null && initialState.StartUtc.HasValue ? initialState.StartUtc.Value : now.AddHours(-1))
-                    .ToString("O", CultureInfo.InvariantCulture)
+                Width = 220,
+                Format = DateTimePickerFormat.Short,
+                Value = initialStart.LocalDateTime
             };
-            _endUtc = new TextBox
+            _startTime = new DateTimePicker
             {
-                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+                Anchor = AnchorStyles.Top | AnchorStyles.Left,
+                Location = new Point(_startDate.Right + 10, 18),
+                Width = 110,
+                Format = DateTimePickerFormat.Custom,
+                CustomFormat = "HH:mm",
+                ShowUpDown = true,
+                Value = initialStart.LocalDateTime
+            };
+            _endDate = new DateTimePicker
+            {
+                Anchor = AnchorStyles.Top | AnchorStyles.Left,
                 Location = new Point(130, 52),
-                Width = ClientSize.Width - 160,
-                Text = (initialState != null && initialState.EndUtc.HasValue ? initialState.EndUtc.Value : now)
-                    .ToString("O", CultureInfo.InvariantCulture)
+                Width = 220,
+                Format = DateTimePickerFormat.Short,
+                Value = initialEnd.LocalDateTime
+            };
+            _endTime = new DateTimePicker
+            {
+                Anchor = AnchorStyles.Top | AnchorStyles.Left,
+                Location = new Point(_endDate.Right + 10, 52),
+                Width = 110,
+                Format = DateTimePickerFormat.Custom,
+                CustomFormat = "HH:mm",
+                ShowUpDown = true,
+                Value = initialEnd.LocalDateTime
             };
 
             _filterBuilderPanel = new Panel
@@ -108,10 +132,12 @@ namespace FlowRunFinder
 
             Controls.AddRange(new Control[]
             {
-                MakeLabel("Start UTC", 18, 20),
-                _startUtc,
-                MakeLabel("End UTC", 18, 54),
-                _endUtc,
+                MakeLabel("Start", 18, 20),
+                _startDate,
+                _startTime,
+                MakeLabel("End", 18, 54),
+                _endDate,
+                _endTime,
                 MakeHeader("Filters", 18, 86, 220),
                 _filterBuilderPanel,
                 _validation,
@@ -329,23 +355,12 @@ namespace FlowRunFinder
         {
             _validation.Text = string.Empty;
 
-            DateTimeOffset startUtc;
-            DateTimeOffset endUtc;
-            if (!TryParseUtc(_startUtc.Text, out startUtc))
-            {
-                _validation.Text = "Enter a valid Start UTC value.";
-                return;
-            }
-
-            if (!TryParseUtc(_endUtc.Text, out endUtc))
-            {
-                _validation.Text = "Enter a valid End UTC value.";
-                return;
-            }
+            var startUtc = GetSelectedUtc(_startDate, _startTime);
+            var endUtc = GetSelectedUtc(_endDate, _endTime);
 
             if (endUtc < startUtc)
             {
-                _validation.Text = "End UTC must be greater than or equal to Start UTC.";
+                _validation.Text = "End date/time must be greater than or equal to Start date/time.";
                 return;
             }
 
@@ -437,26 +452,13 @@ namespace FlowRunFinder
             return true;
         }
 
-        private static bool TryParseUtc(string text, out DateTimeOffset value)
+        private static DateTimeOffset GetSelectedUtc(DateTimePicker datePicker, DateTimePicker timePicker)
         {
-            value = default(DateTimeOffset);
-            if (string.IsNullOrWhiteSpace(text))
-            {
-                return false;
-            }
-
-            DateTimeOffset parsed;
-            if (!DateTimeOffset.TryParse(
-                text.Trim(),
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
-                out parsed))
-            {
-                return false;
-            }
-
-            value = parsed.ToUniversalTime();
-            return true;
+            var selectedDate = datePicker.Value.Date;
+            var selectedTime = timePicker.Value.TimeOfDay;
+            var localDateTime = selectedDate.AddHours(selectedTime.Hours).AddMinutes(selectedTime.Minutes);
+            var localValue = new DateTimeOffset(localDateTime, TimeZoneInfo.Local.GetUtcOffset(localDateTime));
+            return localValue.ToUniversalTime();
         }
 
         private static Label MakeLabel(string text, int x, int y)

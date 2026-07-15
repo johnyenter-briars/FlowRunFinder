@@ -10,8 +10,13 @@
       <ILRepackInputs Include="$(OutputPath)$(AssemblyName).dll" />
       <ILRepackInputs Include="$(OutputPath)FlowRunFinderV2.Core.dll" />
       <ILRepackInputs Include="$(OutputPath)Microsoft.Identity.Client.dll" />
+      <ILRepackInputs Include="$(OutputPath)Microsoft.Identity.Client.Extensions.Msal.dll" />
       <ILRepackInputs Include="$(OutputPath)Microsoft.IdentityModel.Abstractions.dll" />
       <ILRepackInputs Include="$(OutputPath)Microsoft.Bcl.AsyncInterfaces.dll" />
+      <ILRepackInputs Include="$(OutputPath)System.IO.FileSystem.AccessControl.dll" />
+      <ILRepackInputs Include="$(OutputPath)System.Security.AccessControl.dll" />
+      <ILRepackInputs Include="$(OutputPath)System.Security.Cryptography.ProtectedData.dll" />
+      <ILRepackInputs Include="$(OutputPath)System.Security.Principal.Windows.dll" />
       <ILRepackInputs Include="$(OutputPath)System.Runtime.CompilerServices.Unsafe.dll" />
       <ILRepackInputs Include="$(OutputPath)System.Threading.Tasks.Extensions.dll" />
       <ILRepackInputs Include="$(OutputPath)System.Memory.dll" />
@@ -39,8 +44,13 @@
     <Delete Files="
       $(OutputPath)FlowRunFinderV2.Core.dll;
       $(OutputPath)Microsoft.Identity.Client.dll;
+      $(OutputPath)Microsoft.Identity.Client.Extensions.Msal.dll;
       $(OutputPath)Microsoft.IdentityModel.Abstractions.dll;
       $(OutputPath)Microsoft.Bcl.AsyncInterfaces.dll;
+      $(OutputPath)System.IO.FileSystem.AccessControl.dll;
+      $(OutputPath)System.Security.AccessControl.dll;
+      $(OutputPath)System.Security.Cryptography.ProtectedData.dll;
+      $(OutputPath)System.Security.Principal.Windows.dll;
       $(OutputPath)System.Runtime.CompilerServices.Unsafe.dll;
       $(OutputPath)System.Threading.Tasks.Extensions.dll;
       $(OutputPath)System.Memory.dll;
