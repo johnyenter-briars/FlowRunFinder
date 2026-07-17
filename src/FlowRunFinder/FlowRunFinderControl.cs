@@ -53,6 +53,7 @@ namespace FlowRunFinder
         private string _deviceVerificationUrl;
         private string _deviceUserCode;
         private int _busyDepth;
+        private FlowRunQuerySession _activeQuerySession;
         private System.Windows.Forms.Timer _toastTimer;
         private bool _suppressTriggerColumnEvents;
 
@@ -136,6 +137,8 @@ namespace FlowRunFinder
 
         private void ResetConnectionState()
         {
+            _activeQuerySession?.Cancel();
+
             if (_dataverseClient != null)
             {
                 _dataverseClient.Dispose();
@@ -346,37 +349,47 @@ namespace FlowRunFinder
                 _gridRows.Clear();
                 ResetRunColumns();
                 SetStatus("Searching runs for " + flow.Name + "...");
+                ShowAdvancedSearchProgress();
+                var progress = new Progress<FlowRunQueryProgress>(UpdateAdvancedSearchProgress);
 
-                var paToken = await _powerAutomateAuthService.GetTokenAsync(
-                    ShowDeviceCodePrompt,
-                    cancellationToken).ConfigureAwait(true);
-                ClearDeviceCodePrompt();
-
-                using (var queryEngine = new FlowRunQueryEngine(paToken.AccessToken, _dataverseClient, _logger))
+                try
                 {
-                    var environmentId = await queryEngine.DetectEnvironmentIdAsync(_environmentUrl, cancellationToken).ConfigureAwait(true);
-                    if (string.IsNullOrWhiteSpace(environmentId))
-                    {
-                        SetStatus("Could not detect the matching Power Automate environment id.");
-                        return;
-                    }
-
-                    var runs = await queryEngine.SearchRunsAsync(
-                        new FlowRunSearchRequest(
-                            environmentId,
-                            flow.WorkflowId,
-                            request.StartUtc,
-                            request.EndUtc,
-                            request.Filter,
-                            _settings.MaxRunsToQuery,
-                            _settings.UseFlowRunHistoryTable),
+                    var paToken = await _powerAutomateAuthService.GetTokenAsync(
+                        ShowDeviceCodePrompt,
                         cancellationToken).ConfigureAwait(true);
+                    ClearDeviceCodePrompt();
 
-                    ApplyRuns(runs);
-                    SetTriggerColumnOptions(flow, runs.SelectMany(run => run.TriggerInputs.Keys));
-                    SetStatus("Found " + _runs.Count + " runs for " + flow.Name + ".");
+                    using (var queryEngine = new FlowRunQueryEngine(paToken.AccessToken, _dataverseClient, _logger))
+                    {
+                        var environmentId = await queryEngine.DetectEnvironmentIdAsync(_environmentUrl, cancellationToken).ConfigureAwait(true);
+                        if (string.IsNullOrWhiteSpace(environmentId))
+                        {
+                            SetStatus("Could not detect the matching Power Automate environment id.");
+                            return;
+                        }
+
+                        var runs = await queryEngine.SearchRunsAsync(
+                            new FlowRunSearchRequest(
+                                environmentId,
+                                flow.WorkflowId,
+                                request.StartUtc,
+                                request.EndUtc,
+                                request.Filter,
+                                _settings.MaxRunsToQuery,
+                                _settings.UseFlowRunHistoryTable,
+                                progress),
+                            cancellationToken).ConfigureAwait(true);
+
+                        ApplyRuns(runs);
+                        SetTriggerColumnOptions(flow, runs.SelectMany(run => run.TriggerInputs.Keys));
+                        SetStatus("Found " + _runs.Count + " runs for " + flow.Name + ".");
+                    }
                 }
-            }).ConfigureAwait(true);
+                finally
+                {
+                    HideAdvancedSearchProgress();
+                }
+            }, canCancel: true).ConfigureAwait(true);
         }
 
         private void btnTriggerColumns_Click(object sender, EventArgs e)
@@ -726,7 +739,7 @@ namespace FlowRunFinder
             btnRefreshRuns.Enabled = false;
         }
 
-        private async Task RunUiActionAsync(Func<CancellationToken, Task> action)
+        private async Task RunUiActionAsync(Func<CancellationToken, Task> action, bool canCancel = false)
         {
             btnReloadFlows.Enabled = false;
             btnSettings.Enabled = false;
@@ -735,12 +748,23 @@ namespace FlowRunFinder
             btnAdvancedSearch.Enabled = false;
             BeginBusy();
 
+            FlowRunQuerySession querySession = null;
             try
             {
-                using (var cancellationTokenSource = new CancellationTokenSource())
+                if (canCancel)
                 {
-                    await action(cancellationTokenSource.Token).ConfigureAwait(true);
+                    querySession = new FlowRunQuerySession();
+                    _activeQuerySession = querySession;
+                    btnCancelBusyAction.Visible = true;
+                    btnCancelBusyAction.Enabled = true;
                 }
+
+                await action(querySession != null ? querySession.CancellationToken : CancellationToken.None).ConfigureAwait(true);
+            }
+            catch (OperationCanceledException) when (querySession != null && querySession.IsCancellationRequested)
+            {
+                SetStatus("Query canceled.");
+                _logger.Info("Query canceled by user.");
             }
             catch (Exception ex)
             {
@@ -755,7 +779,31 @@ namespace FlowRunFinder
                 btnRefreshRuns.Enabled = _selectedFlow != null;
                 btnTriggerColumns.Enabled = _knownTriggerKeys.Count > 0;
                 btnAdvancedSearch.Enabled = _knownTriggerKeys.Count > 0;
+                btnCancelBusyAction.Visible = false;
+                btnCancelBusyAction.Enabled = false;
+                if (ReferenceEquals(_activeQuerySession, querySession))
+                {
+                    _activeQuerySession = null;
+                }
+
+                if (querySession != null)
+                {
+                    querySession.Dispose();
+                }
             }
+        }
+
+        private void btnCancelBusyAction_Click(object sender, EventArgs e)
+        {
+            if (_activeQuerySession == null || _activeQuerySession.IsCancellationRequested)
+            {
+                return;
+            }
+
+            btnCancelBusyAction.Enabled = false;
+            SetStatus("Canceling query...");
+            _activeQuerySession.Cancel();
+            _logger.Info("Cancel requested for active query.");
         }
 
         private void ShowDeviceCodePrompt(DeviceCodePrompt prompt)
@@ -855,6 +903,33 @@ namespace FlowRunFinder
         {
             _busyDepth = Math.Max(0, _busyDepth - 1);
             busyPanel.Visible = _busyDepth > 0;
+        }
+
+        private void ShowAdvancedSearchProgress()
+        {
+            lblAdvancedSearchProgress.Text = "Candidate records: 0. 0% scanned, 0 matches";
+            progressAdvancedSearch.Value = 0;
+            advancedSearchProgressPanel.Visible = true;
+            advancedSearchProgressPanel.BringToFront();
+        }
+
+        private void UpdateAdvancedSearchProgress(FlowRunQueryProgress progress)
+        {
+            SafeUi(() =>
+            {
+                lblAdvancedSearchProgress.Text = string.Format(
+                    CultureInfo.InvariantCulture,
+                    "Candidate records: {0:N0}. {1}% scanned, {2:N0} matches",
+                    progress.CandidateRecordCount,
+                    progress.PercentScanned,
+                    progress.MatchCount);
+                progressAdvancedSearch.Value = progress.PercentScanned;
+            });
+        }
+
+        private void HideAdvancedSearchProgress()
+        {
+            advancedSearchProgressPanel.Visible = false;
         }
 
         private void SetStatus(string message)

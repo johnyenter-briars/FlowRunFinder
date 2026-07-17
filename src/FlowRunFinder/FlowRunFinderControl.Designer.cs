@@ -46,6 +46,10 @@ namespace FlowRunFinder
         private Panel busyPanel;
         private ProgressBar progressBusy;
         private Label lblBusy;
+        private Button btnCancelBusyAction;
+        private Panel advancedSearchProgressPanel;
+        private Label lblAdvancedSearchProgress;
+        private ProgressBar progressAdvancedSearch;
         private Panel toastPanel;
         private Label lblToast;
 
@@ -54,6 +58,7 @@ namespace FlowRunFinder
             if (disposing)
             {
                 if (_dataverseClient != null) _dataverseClient.Dispose();
+                if (_activeQuerySession != null) _activeQuerySession.Cancel();
                 if (_toastTimer != null) _toastTimer.Dispose();
                 if (components != null) components.Dispose();
             }
@@ -104,6 +109,10 @@ namespace FlowRunFinder
             busyPanel = new Panel();
             progressBusy = new ProgressBar();
             lblBusy = MakeBodyLabel("Working...");
+            btnCancelBusyAction = MakeButton("Cancel", false);
+            advancedSearchProgressPanel = new Panel();
+            lblAdvancedSearchProgress = MakeBodyLabel("Candidate records: 0. 0% scanned, 0 matches");
+            progressAdvancedSearch = new ProgressBar();
             toastPanel = new Panel();
             lblToast = MakeBodyLabel("Copied to clipboard");
 
@@ -138,10 +147,12 @@ namespace FlowRunFinder
             Controls.Add(flowPickerPanel);
             Controls.Add(triggerColumnsPanel);
             Controls.Add(busyPanel);
+            Controls.Add(advancedSearchProgressPanel);
             Controls.Add(toastPanel);
             flowPickerPanel.BringToFront();
             triggerColumnsPanel.BringToFront();
             busyPanel.BringToFront();
+            advancedSearchProgressPanel.BringToFront();
             toastPanel.BringToFront();
 
             btnReloadFlows.Click += btnReloadFlows_Click;
@@ -151,6 +162,7 @@ namespace FlowRunFinder
             btnRefreshRuns.Click += btnRefreshRuns_Click;
             btnTriggerColumns.Click += btnTriggerColumns_Click;
             btnAdvancedSearch.Click += btnAdvancedSearch_Click;
+            btnCancelBusyAction.Click += btnCancelBusyAction_Click;
             txtFlowSearch.TextChanged += txtFlowSearch_TextChanged;
             lstFlows.SelectedIndexChanged += lstFlows_SelectedIndexChanged;
             txtTriggerColumnSearch.TextChanged += txtTriggerColumnSearch_TextChanged;
@@ -361,19 +373,36 @@ namespace FlowRunFinder
         private void BuildBusyAndToastPanels()
         {
             busyPanel.Anchor = AnchorStyles.Right | AnchorStyles.Bottom;
-            busyPanel.Size = new Size(260, 48);
+            busyPanel.Size = new Size(350, 48);
             busyPanel.BackColor = Color.FromArgb(245, 247, 250);
             busyPanel.BorderStyle = BorderStyle.FixedSingle;
             busyPanel.Visible = false;
             busyPanel.Padding = new Padding(12);
             busyPanel.Controls.Add(progressBusy);
             busyPanel.Controls.Add(lblBusy);
+            busyPanel.Controls.Add(btnCancelBusyAction);
 
             progressBusy.Style = ProgressBarStyle.Marquee;
             progressBusy.Location = new Point(12, 18);
             progressBusy.Size = new Size(86, 8);
             lblBusy.Location = new Point(108, 14);
             lblBusy.Size = new Size(130, 20);
+            btnCancelBusyAction.Location = new Point(268, 10);
+            btnCancelBusyAction.Size = new Size(68, 28);
+            btnCancelBusyAction.Visible = false;
+
+            advancedSearchProgressPanel.Anchor = AnchorStyles.Right | AnchorStyles.Bottom;
+            advancedSearchProgressPanel.Size = new Size(350, 70);
+            advancedSearchProgressPanel.BackColor = Color.FromArgb(245, 247, 250);
+            advancedSearchProgressPanel.BorderStyle = BorderStyle.FixedSingle;
+            advancedSearchProgressPanel.Visible = false;
+            advancedSearchProgressPanel.Padding = new Padding(12);
+            lblAdvancedSearchProgress.Location = new Point(12, 10);
+            lblAdvancedSearchProgress.Size = new Size(324, 20);
+            progressAdvancedSearch.Location = new Point(12, 38);
+            progressAdvancedSearch.Size = new Size(324, 12);
+            advancedSearchProgressPanel.Controls.Add(progressAdvancedSearch);
+            advancedSearchProgressPanel.Controls.Add(lblAdvancedSearchProgress);
 
             toastPanel.Anchor = AnchorStyles.Bottom;
             toastPanel.Size = new Size(180, 36);
@@ -389,6 +418,8 @@ namespace FlowRunFinder
             {
                 busyPanel.Left = Width - busyPanel.Width - 24;
                 busyPanel.Top = Height - busyPanel.Height - 24;
+                advancedSearchProgressPanel.Left = Width - advancedSearchProgressPanel.Width - 24;
+                advancedSearchProgressPanel.Top = busyPanel.Top - advancedSearchProgressPanel.Height - 8;
                 toastPanel.Left = (Width - toastPanel.Width) / 2;
                 toastPanel.Top = Height - toastPanel.Height - 24;
             };
